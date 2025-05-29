@@ -713,23 +713,20 @@ if not chatbot.load_models():
     print("No existing models found. Training new models...")
     chatbot.train_models()
 
+from flask import Flask, render_template, request, jsonify
+import traceback
+
+app = Flask(__name__)
+
+# Load or define your chatbot model instance here
+# Example placeholder:
+# from your_chatbot_module import chatbot
+# chatbot = ChatbotModel()
+
 @app.route('/')
 def serve_home():
     """Serve the HTML interface"""
-    try:
-        with open('index.html', 'r', encoding='utf-8') as f:
-            return f.read()
-    except FileNotFoundError:
-        return '''
-        <!DOCTYPE html>
-        <html>
-        <head><title>File Not Found</title></head>
-        <body>
-            <h1>Error: index.html file not found</h1>
-            <p>Please make sure the index.html file is in the same directory as chatbot.py</p>
-        </body>
-        </html>
-        ''', 404
+    return render_template('index.html')  # Now served from /templates/index.html
 
 @app.route('/chat', methods=['POST'])
 def handle_chat():
@@ -752,6 +749,7 @@ def handle_chat():
         
     except Exception as e:
         print(f"Chat error: {e}")
+        traceback.print_exc()
         return jsonify({
             'response': 'Sorry, I encountered an error. Please try again.',
             'error': str(e)
