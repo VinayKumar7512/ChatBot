@@ -25,16 +25,16 @@ class MedicalMLChatbot:
         self.vectorizer = TfidfVectorizer(
             lowercase=True,
             stop_words='english',
-            ngram_range=(1, 3),
-            max_features=5000,
-            min_df=2,
+            ngram_range=(1, 3), 
+            max_features=5000, 
+            min_df=2, 
             max_df=0.95
         )
         
         self.symptom_classifier = RandomForestClassifier(
             n_estimators=100,
-            random_state=42,
-            max_depth=10
+            random_state=42, 
+            max_depth=10  
         )
         
         self.disease_classifier = LogisticRegression(
@@ -51,7 +51,7 @@ class MedicalMLChatbot:
         self.is_trained = False
         
         # Medical knowledge base
-        self.medical_data = self.create_training_data()
+        self.medical_data = self.create_training_data()  
         
         # Symptom keywords for multi-symptom detection
         self.symptom_keywords = {
@@ -153,6 +153,7 @@ class MedicalMLChatbot:
         text_lower = text.lower().strip()
         # Remove punctuation for better matching
         text_clean = re.sub(r'[^\w\s]', '', text_lower)
+        
         # Pure greeting patterns (no medical context)
         pure_greetings = [
             'hello', 'hi', 'hey', 'greetings', 'good morning', 'good afternoon', 
@@ -163,18 +164,15 @@ class MedicalMLChatbot:
             'help', 'what can you do', 'who are you', 'what are you', 
             'tell me about yourself', 'about you'
         ]
-    
-        # Check if the entire message is just a greeting (with or without punctuation)
+        
+        # Check if the entire message is just a greeting
         for greeting in pure_greetings:
             if text_clean == greeting or text_lower == greeting:
                 return True
-        # Also check with common punctuation
+            # Also check with common punctuation
             if text_lower in [greeting + '!', greeting + '.', greeting + '?']:
                 return True
-            simple_greetings = ['hi there', 'hello there', 'hey there', 'good day']
-            if text_clean in simple_greetings or text_lower in simple_greetings:
-                return True
-            return False
+        
         # Check for simple greeting combinations
         simple_greetings = ['hi there', 'hello there', 'hey there', 'good day', 'thanks so much']
         for greeting in simple_greetings:
@@ -583,7 +581,12 @@ class MedicalMLChatbot:
         if not user_input:
             return self.get_time_based_greeting()
         
-        # CRITICAL FIX: Check if it's a pure greeting first, before any medical analysis
+        # Check for about/tell me about yourself queries first
+        about_queries = ['tell me about yourself', 'who are you', 'what are you', 'about you']
+        if any(query in user_input.lower() for query in about_queries):
+            return random.choice(self.greeting_responses['about'])
+        
+        # Check if it's a pure greeting
         if self.is_greeting_only(user_input):
             interaction_type = self.detect_interaction_type(user_input)
             if interaction_type:
@@ -592,6 +595,8 @@ class MedicalMLChatbot:
                     return greeting_response
             # Fallback for greetings not in patterns
             return self.get_time_based_greeting()
+        
+        # Only proceed with medical analysis if it's not a greeting or about query
         if not self.has_medical_context(user_input):
             return ("🤔 I didn't detect any health-related symptoms in your message. \n\n" +
                     "I'm here to help with medical concerns! Try describing symptoms like:\n" +
@@ -599,6 +604,7 @@ class MedicalMLChatbot:
                     "• 'I'm feeling nauseous'\n" +
                     "• 'I have a cough and sore throat'\n\n" +
                     "What health symptoms are you experiencing? 💙")
+        
         # Check for emergency keywords
         emergency_keywords = ['emergency', 'urgent', 'chest pain', 'difficulty breathing', 'severe pain', 'can\'t breathe']
         if any(keyword in user_input.lower() for keyword in emergency_keywords):
@@ -617,7 +623,7 @@ class MedicalMLChatbot:
                    "• Any other discomfort or pain?\n\n" +
                    "The more details you provide, the better I can assist you! 💙")
         
-        # Make ML predictions
+        # Make ML predictions only if we have medical context
         predictions = self.predict(user_input)
         
         if not predictions:
@@ -735,11 +741,13 @@ def handle_chat():
         data = request.get_json()
         user_message = data.get('message', '')
         
-        # Get ML-based response with multi-symptom analysis
+        # Get response from chatbot
         bot_response = chatbot.get_response(user_message)
         
-        # Get raw predictions for frontend
-        predictions = chatbot.predict(user_message) if user_message.strip() else None
+        # Only get predictions if it's not a greeting or about query
+        predictions = None
+        if not chatbot.is_greeting_only(user_message) and not any(query in user_message.lower() for query in ['tell me about yourself', 'who are you', 'what are you', 'about you']):
+            predictions = chatbot.predict(user_message)
         
         return jsonify({
             'response': bot_response,
